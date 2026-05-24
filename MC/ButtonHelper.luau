@@ -1,7 +1,14 @@
 local highlighted: { [Instance]: Highlight } = {}
 
-local function isButton(instance: Instance): boolean
+--[[local function isButton(instance: Instance): boolean
 	return instance.Name == "Button"
+end
+]]
+
+local function isButton(instance: Instance): boolean
+	if not instance.Name:lower():find("button") then return false end
+	local parent = instance.Parent
+	return parent == workspace or parent:IsA("Folder")
 end
 
 local function addHighlight(instance: Instance): ()
