@@ -1,19 +1,52 @@
-local highlighted: { [Instance]: Highlight } = {}
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
---[[local function isButton(instance: Instance): boolean
-	return instance.Name == "Button"
-end
-]]
+local camera = workspace.CurrentCamera
+local localPlayer = Players.LocalPlayer
+
+local highlighted: { [Instance]: Highlight } = {}
+local seen: { [Instance]: boolean } = {}
 
 local function isButton(instance: Instance): boolean
 	if not instance.Name:lower():find("button") then return false end
-	local parent = instance.Parent
-	return parent == workspace or parent:IsA("Folder")
+	if not instance:IsA("BasePart") and not instance:IsA("Model") then return false end
+	if instance:FindFirstChildWhichIsA("Humanoid") then return false end
+	local ancestorModel = instance:FindFirstAncestorWhichIsA("Model")
+	if ancestorModel and ancestorModel:FindFirstChildWhichIsA("Humanoid") then return false end
+	return true
+end
+
+local function getRoot(instance: Instance): BasePart?
+	if instance:IsA("BasePart") then return instance end
+	if instance:IsA("Model") then
+		return instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart")
+	end
+	return nil
+end
+
+local function isInLineOfSight(instance: Instance): boolean
+	local root = getRoot(instance)
+	if not root then return false end
+
+	local origin = camera.CFrame.Position
+	local target = root.Position
+
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local excludes: { Instance } = { instance }
+	local char = localPlayer.Character
+	if char then
+		table.insert(excludes, char)
+	end
+	raycastParams.FilterDescendantsInstances = excludes
+
+	local result = workspace:Raycast(origin, target - origin, raycastParams)
+	return result == nil
 end
 
 local function addHighlight(instance: Instance): ()
 	if highlighted[instance] then return end
-	if not instance:IsA("BasePart") and not instance:IsA("Model") then return end
 
 	local highlight = Instance.new("Highlight")
 	highlight.Adornee = instance
@@ -32,17 +65,16 @@ local function removeHighlight(instance: Instance): ()
 	if not highlight then return end
 	highlight:Destroy()
 	highlighted[instance] = nil
+	seen[instance] = nil
 end
 
-local function scanDescendants(root: Instance): ()
-	for _, instance in root:GetDescendants() do
+task.defer(function()
+	for _, instance in workspace:GetDescendants() do
 		if isButton(instance) then
 			addHighlight(instance)
 		end
 	end
-end
-
-scanDescendants(workspace)
+end)
 
 workspace.DescendantAdded:Connect(function(instance: Instance)
 	if isButton(instance) then
@@ -52,4 +84,21 @@ end)
 
 workspace.DescendantRemoving:Connect(function(instance: Instance)
 	removeHighlight(instance)
+end)
+
+RunService.RenderStepped:Connect(function(dt: number)
+	for instance, highlight in highlighted do
+		if seen[instance] then continue end
+
+		if isInLineOfSight(instance) then
+			seen[instance] = true
+		end
+
+		local fillTarget = if seen[instance] then 1 else 0.5
+		local outlineTarget = if seen[instance] then 1 else 0
+		local speed = math.min(dt * 8, 1)
+
+		highlight.FillTransparency += (fillTarget - highlight.FillTransparency) * speed
+		highlight.OutlineTransparency += (outlineTarget - highlight.OutlineTransparency) * speed
+	end
 end)
