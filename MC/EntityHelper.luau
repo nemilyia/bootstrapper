@@ -2,7 +2,6 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local camera = workspace.CurrentCamera
-local localPlayer = Players.LocalPlayer
 
 local highlighted: { [Instance]: Highlight } = {}
 
@@ -20,21 +19,16 @@ local function isNpc(instance: Instance): boolean
 	return instance:FindFirstChildWhichIsA("Humanoid") ~= nil
 end
 
-local function getRoot(instance: Instance): BasePart?
-	if instance:IsA("Model") then
-		return instance.PrimaryPart
-			or instance:FindFirstChildWhichIsA("BasePart")
-			or instance:FindFirstDescendantWhichIsA("BasePart")
-	end
-	return nil
-end
-
 local function isInLineOfSight(instance: Instance): boolean
-	local root = getRoot(instance)
-	if not root then return false end
+	local parts: { BasePart } = {}
 
-	local origin = camera.CFrame.Position
-	local target = root.Position
+	for _, desc in instance:GetDescendants() do
+		if desc:IsA("BasePart") then
+			table.insert(parts, desc)
+		end
+	end
+
+	if #parts == 0 then return false end
 
 	local raycastParams = RaycastParams.new()
 	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -47,8 +41,16 @@ local function isInLineOfSight(instance: Instance): boolean
 	end
 	raycastParams.FilterDescendantsInstances = excludes
 
-	local result = workspace:Raycast(origin, target - origin, raycastParams)
-	return result == nil
+	local origin = camera.CFrame.Position
+
+	for _, part in parts do
+		local result = workspace:Raycast(origin, part.Position - origin, raycastParams)
+		if result == nil then
+			return true
+		end
+	end
+
+	return false
 end
 
 local function addHighlight(instance: Instance): ()
