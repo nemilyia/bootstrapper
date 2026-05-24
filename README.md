@@ -6,6 +6,6 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/nemilyia/bootstrapper
 ```
 
 supported games:
-- [Minus Corporation](https://www.roblox.com/games/91956682912260)
+- [M Corp](https://www.roblox.com/games/91956682912260)
 
 note: if you need to use this yourself you need to replace the urls manually (or not if you want to use my scripts)
