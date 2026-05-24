@@ -1,11 +1,13 @@
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 
 local camera = workspace.CurrentCamera
 local localPlayer = Players.LocalPlayer
 
+local SEEN_ATTR = HttpService:GenerateGUID(false)
+
 local highlighted: { [Instance]: Highlight } = {}
-local seen: { [Instance]: boolean } = {}
 
 local function isButton(instance: Instance): boolean
 	if not instance.Name:lower():find("button") then return false end
@@ -19,7 +21,9 @@ end
 local function getRoot(instance: Instance): BasePart?
 	if instance:IsA("BasePart") then return instance end
 	if instance:IsA("Model") then
-		return instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart")
+		return instance.PrimaryPart
+			or instance:FindFirstChildWhichIsA("BasePart")
+			or instance:FindFirstDescendantWhichIsA("BasePart")
 	end
 	return nil
 end
@@ -35,9 +39,10 @@ local function isInLineOfSight(instance: Instance): boolean
 	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
 	local excludes: { Instance } = { instance }
-	local char = localPlayer.Character
-	if char then
-		table.insert(excludes, char)
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			table.insert(excludes, player.Character)
+		end
 	end
 	raycastParams.FilterDescendantsInstances = excludes
 
@@ -65,7 +70,6 @@ local function removeHighlight(instance: Instance): ()
 	if not highlight then return end
 	highlight:Destroy()
 	highlighted[instance] = nil
-	seen[instance] = nil
 end
 
 task.defer(function()
@@ -88,14 +92,15 @@ end)
 
 RunService.RenderStepped:Connect(function(dt: number)
 	for instance, highlight in highlighted do
-		if seen[instance] then continue end
+		if instance:GetAttribute(SEEN_ATTR) then continue end
 
 		if isInLineOfSight(instance) then
-			seen[instance] = true
+			instance:SetAttribute(SEEN_ATTR, true)
 		end
 
-		local fillTarget = if seen[instance] then 1 else 0.5
-		local outlineTarget = if seen[instance] then 1 else 0
+		local isSeen = instance:GetAttribute(SEEN_ATTR) == true
+		local fillTarget = if isSeen then 1 else 0.5
+		local outlineTarget = if isSeen then 1 else 0
 		local speed = math.min(dt * 8, 1)
 
 		highlight.FillTransparency += (fillTarget - highlight.FillTransparency) * speed
