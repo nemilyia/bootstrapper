@@ -86,7 +86,7 @@ workspace.ChildRemoved:Connect(function(instance: Instance)
 	removeHighlight(instance)
 end)
 
-RunService.RenderStepped:Connect(function()
+--[[RunService.RenderStepped:Connect(function()
 	for instance, highlight in highlighted do
 		if isInLineOfSight(instance) then
 			highlight.FillTransparency = 1
@@ -95,5 +95,18 @@ RunService.RenderStepped:Connect(function()
 			highlight.FillTransparency = 0.5
 			highlight.OutlineTransparency = 0
 		end
+	end
+end)
+]]
+
+RunService.RenderStepped:Connect(function(dt: number)
+	for instance, highlight in highlighted do
+		local inSight = isInLineOfSight(instance)
+		local fillTarget = if inSight then 1 else 0.5
+		local outlineTarget = if inSight then 1 else 0
+		local speed = math.min(dt * 8, 1)
+
+		highlight.FillTransparency += (fillTarget - highlight.FillTransparency) * speed
+		highlight.OutlineTransparency += (outlineTarget - highlight.OutlineTransparency) * speed
 	end
 end)
