@@ -40,7 +40,7 @@ local library = parseStrap(libraryRaw)
 local orderUrl = library[placeId]
 
 if not orderUrl then
-	warn(`Bootstrapper: No entry for place {placeId} in library.strap`)
+	-- warn(`Bootstrapper: No entry for place {placeId} in library.strap`)
 	return
 end
 
